@@ -35,6 +35,7 @@ export default function App() {
     { 
       field: 'name', 
       rowDrag: true, 
+      editable: true,
       cellRenderer: 'agGroupCellRenderer',
       cellRendererParams: {
         innerRenderer: (params: any) => {
@@ -54,9 +55,19 @@ export default function App() {
       },
       flex: 2,
     },
+    {
+      field: 'value',
+      editable: true,
+      flex: 1,
+    },
     { 
       field: 'status', 
       flex: 1,
+      editable: true,
+      cellEditor: 'agSelectCellEditor',
+      cellEditorParams: {
+        values: ['todo', 'doing', 'done']
+      },
       cellRenderer: (params: any) => {
         const val = params.value?.toUpperCase();
         const colors: Record<string, string> = {
@@ -71,7 +82,16 @@ export default function App() {
         );
       }
     },
-    { field: 'type', flex: 1, cellStyle: { color: '#94a3b8', fontSize: '11px', textTransform: 'uppercase', fontWeight: 600 } },
+    { 
+      field: 'type', 
+      flex: 1, 
+      editable: true,
+      cellEditor: 'agSelectCellEditor',
+      cellEditorParams: {
+        values: ['task', 'folder']
+      },
+      cellStyle: { color: '#94a3b8', fontSize: '11px', textTransform: 'uppercase', fontWeight: 600 } 
+    },
     { field: 'order', hide: true, sort: 'asc' as const }
   ], []);
 
@@ -79,7 +99,17 @@ export default function App() {
     sortable: true,
     filter: true,
     resizable: true,
-  }), []);
+    onCellValueChanged: (params) => {
+      if (!params.data) return;
+      const newData = MovementEngine.updateNode(rowData, params.data.id, {
+        name: params.data.name,
+        status: params.data.status,
+        type: params.data.type,
+        value: params.data.value
+      });
+      setRowData(newData);
+    }
+  }), [rowData]);
 
   const autoGroupColumnDef: ColDef = useMemo(() => ({
     headerName: 'ASSET HIERARCHY',
@@ -144,6 +174,26 @@ export default function App() {
 
     const newData = MovementEngine.moveTasks(rowData, movingIds, targetId, position);
     setRowData(newData);
+  };
+
+  const handleAddNode = () => {
+    if (!gridApiRef.current) return;
+    const selectedRows = gridApiRef.current.getSelectedRows();
+    const parentId = selectedRows.length > 0 ? selectedRows[0].id : null;
+    const newData = MovementEngine.addNode(rowData, parentId);
+    setRowData(newData);
+  };
+
+  const handleDeleteNode = () => {
+    if (!gridApiRef.current) return;
+    const selectedRows = gridApiRef.current.getSelectedRows();
+    if (selectedRows.length === 0) return;
+    
+    // Delete first selected row for simplicity or all? User says "Delete Row"
+    const targetId = selectedRows[0].id;
+    const newData = MovementEngine.deleteNode(rowData, targetId);
+    setRowData(newData);
+    gridApiRef.current.deselectAll();
   };
 
   const handleReset = () => {
@@ -233,14 +283,31 @@ export default function App() {
       <main className="flex-1 flex flex-col min-w-0 border-l border-brand-border">
         {/* Header */}
         <header className="h-16 bg-white border-b border-brand-border flex items-center justify-between px-6 shrink-0">
-          <h2 className="font-semibold text-lg">Enterprise Asset Hierarchy</h2>
+          <div className="flex flex-col">
+            <h2 className="font-semibold text-lg leading-tight">Enterprise Asset Hierarchy</h2>
+            <p className="text-[10px] text-slate-400 font-medium">REAL-TIME HIERARCHICAL RESTRUCTURING ENGINE</p>
+          </div>
           <div className="flex gap-2">
             <button 
-              onClick={handleReset}
-              className="px-4 py-2 text-xs font-semibold border border-red-200 text-red-600 rounded hover:bg-red-50 transition-colors mr-2"
+              onClick={handleAddNode}
+              className="px-4 py-2 text-xs font-bold bg-emerald-600 text-white rounded hover:bg-emerald-700 transition-colors shadow-sm"
             >
-              Reset Data
+              Add Node
             </button>
+            <button 
+              onClick={handleDeleteNode}
+              className="px-4 py-2 text-xs font-bold bg-slate-100 text-slate-700 border border-slate-200 rounded hover:bg-slate-200 transition-colors shadow-sm"
+            >
+              Delete Selected
+            </button>
+            <div className="w-px h-6 bg-slate-200 mx-1" />
+            <button 
+              onClick={handleReset}
+              className="px-4 py-2 text-xs font-semibold border border-red-200 text-red-600 rounded hover:bg-red-50 transition-colors shadow-sm"
+            >
+              Reset Interface
+            </button>
+            <div className="w-px h-6 bg-slate-200 mx-1" />
             <button 
               onClick={() => gridApiRef.current?.expandAll()}
               className="px-4 py-2 text-xs font-semibold border border-brand-border rounded hover:bg-slate-50 transition-colors"
@@ -253,8 +320,8 @@ export default function App() {
             >
               Collapse All
             </button>
-            <button className="px-4 py-2 text-xs font-semibold bg-brand-accent text-white rounded hover:opacity-90 transition-opacity">
-              Save Hierarchy
+            <button className="px-4 py-2 text-xs font-semibold bg-brand-accent text-white rounded hover:opacity-90 transition-opacity ml-2 shadow-md">
+              Publish Structure
             </button>
           </div>
         </header>

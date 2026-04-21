@@ -110,6 +110,65 @@ export const MovementEngine = {
     return [...otherTasks, ...stationarySiblings, ...movingDescendants];
   },
 
+  addNode(allTasks: Task[], parentId: string | null): Task[] {
+    const newId = Math.random().toString(36).substring(2, 9);
+    let parentPath: string[] = [];
+    
+    if (parentId) {
+      const parent = allTasks.find(t => t.id === parentId);
+      if (parent) parentPath = parent.path;
+    }
+
+    const newNode: Task = {
+      id: newId,
+      name: `New ${parentId ? 'Child' : 'Root'} Node`,
+      path: [...parentPath, newId],
+      order: 0,
+      type: 'task',
+      status: 'todo'
+    };
+
+    // Get current siblings to determine the new order
+    const siblings = allTasks
+      .filter(t => this.isDirectChild(t.path, parentPath))
+      .sort((a, b) => a.order - b.order);
+
+    newNode.order = siblings.length;
+    
+    return [...allTasks, newNode];
+  },
+
+  deleteNode(allTasks: Task[], nodeId: string): Task[] {
+    const nodeToDelete = allTasks.find(t => t.id === nodeId);
+    if (!nodeToDelete) return allTasks;
+
+    const parentPath = nodeToDelete.path.slice(0, -1);
+    const prefix = [...nodeToDelete.path];
+
+    // Remove node and all descendants
+    const remainingTasks = allTasks.filter(t => !this.isPrefixOf(prefix, t.path));
+
+    // Reindex remaining siblings
+    const siblings = remainingTasks
+      .filter(t => this.isDirectChild(t.path, parentPath))
+      .sort((a, b) => a.order - b.order);
+
+    siblings.forEach((s, i) => {
+      s.order = i;
+    });
+
+    return remainingTasks;
+  },
+
+  updateNode(allTasks: Task[], nodeId: string, updates: Partial<Pick<Task, 'name' | 'status' | 'type' | 'value'>>): Task[] {
+    return allTasks.map(t => {
+      if (t.id === nodeId) {
+        return { ...t, ...updates };
+      }
+      return t;
+    });
+  },
+
   isPrefixOf(prefix: string[], path: string[]): boolean {
     if (path.length < prefix.length) return false;
     return prefix.every((key, i) => path[i] === key);
