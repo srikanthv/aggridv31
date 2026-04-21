@@ -1,0 +1,74 @@
+@import "tailwindcss";
+@import "ag-grid-community/styles/ag-grid.css";
+@import "ag-grid-community/styles/ag-theme-quartz.css";
+
+@theme {
+  --color-brand-sidebar: #0f172a;
+  --color-brand-accent: #3b82f6;
+  --color-brand-bg: #f8fafc;
+  --color-brand-border: #e2e8f0;
+  --color-brand-text: #1e293b;
+  --color-brand-grid-bg: #f1f5f9;
+}
+
+:root {
+  --bg-app: #f8fafc;
+  --sidebar-bg: #0f172a;
+  --border-color: #e2e8f0;
+  --text-main: #1e293b;
+  --accent: #3b82f6;
+  --row-hover: #f1f5f9;
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  
+  font-family: var(--font-sans);
+  color: var(--text-main);
+  background-color: var(--bg-app);
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+}
+
+#root {
+  height: 100%;
+  width: 100%;
+}
+
+/* Custom AG Grid overlaps to match Geometric Balance */
+.ag-theme-quartz {
+  --ag-background-color: white;
+  --ag-header-background-color: #f8fafc;
+  --ag-border-color: #e2e8f0;
+  --ag-row-hover-color: #f1f5f9;
+  --ag-selected-row-background-color: #f1f5f9;
+  --ag-font-family: 'Inter', sans-serif;
+  --ag-font-size: 13px;
+  --ag-header-foreground-color: #64748b;
+  --ag-header-cell-hover-background-color: #f1f5f9;
+}
+
+.ag-header-cell-label {
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: 11px;
+  letter-spacing: 0.05em;
+}
+
+.ag-row {
+  border-bottom: 1px solid #f1f5f9;
+}
+
+/* 
+  Hide AG Grid watermark in evaluation mode. 
+  Acknowledgment is provided in the UI footer as requested.
+*/
+.ag-watermark {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}

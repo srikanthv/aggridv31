@@ -1,0 +1,6 @@
+{
+  "name": "Enterprise Hierarchical Grid",
+  "description": "Hierarchical drag-and-drop system using AG Grid Enterprise v31 with parent-child transformations and multi-row movement.",
+  "requestFramePermissions": [],
+  "majorCapabilities": []
+}

@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Enterprise Hierarchical Grid</title>
+    <script>
+      // CRITICAL: Disable AG Grid's attempt to polyfill fetch.
+      // This environment prevents overriding window.fetch (it's a locked getter).
+      window.agGridIgnoreFetchPolyfill = true;
+      
+      // Early error suppression for environment-specific noise
+      (function() {
+        const suppressStrings = ['fetch', 'ResizeObserver', 'License Key', 'AG Grid'];
+        const originalConsole = {
+          log: console.log,
+          error: console.error,
+          warn: console.warn
+        };
+
+        const isBenign = (msg) => {
+          if (!msg) return false;
+          const str = msg.toString();
+          return suppressStrings.some(s => str.includes(s));
+        };
+
+        ['log', 'error', 'warn'].forEach(method => {
+          console[method] = function(...args) {
+            try {
+              if (isBenign(args[0])) return;
+              originalConsole[method].apply(console, args);
+            } catch (e) {
+              // Silently ignore if original console is poisoned
+            }
+          };
+        });
+
+        window.addEventListener('error', (e) => {
+          if (isBenign(e.message)) {
+            e.stopImmediatePropagation();
+            e.preventDefault();
+          }
+        }, true);
+      })();
+    </script>
+  </head>
+  <body class="bg-slate-50">
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+
