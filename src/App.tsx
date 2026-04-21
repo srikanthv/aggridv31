@@ -139,7 +139,26 @@ export default function App() {
     const rect = rowElement.getBoundingClientRect();
     const mouseY = event.event.clientY;
     const offsetY = mouseY - rect.top;
-    const ratio = offsetY / rect.height;
+    const height = rect.height;
+    const ratio = offsetY / height;
+
+    // Detection for "Below Parent" zone
+    const isExpandedParent = rowNode.expanded && (rowNode.allChildrenCount ?? 0) > 0;
+    
+    // Determine if it's the last child of its parent
+    const parent = rowNode.parent;
+    const siblings = parent?.childrenAfterGroup || [];
+    const isLastChildOfParent = siblings.length > 0 && siblings[siblings.length - 1] === rowNode;
+    
+    // Case 1: Hovering over an expanded parent's bottom edge (80%-100% zone)
+    if (isExpandedParent && ratio > 0.8) {
+      return 'below-parent';
+    }
+
+    // Case 2: Hovering over the last child of a parent in its bottom 40% (Exit Subtree Zone)
+    if (!isExpandedParent && isLastChildOfParent && ratio > 0.6 && parent && parent.level >= 0) {
+      return 'below-parent';
+    }
 
     // Strict 25/50/25 rule for precise UX
     if (ratio < 0.25) return 'above';
@@ -169,8 +188,18 @@ export default function App() {
 
     const movingNodes = event.nodes;
     const movingIds = movingNodes.map(n => n.data.id);
-    const targetId = overNode.data.id;
-    const position = getDropPosition(event);
+    let targetId = overNode.data.id;
+    let position = getDropPosition(event);
+
+    // If it's a below-parent drop detected on a child node, 
+    // redirect the target to the parent to ensure sibling placement.
+    const parent = overNode.parent;
+    const siblings = parent?.childrenAfterGroup || [];
+    const isLastChildOfParent = siblings.length > 0 && siblings[siblings.length - 1] === overNode;
+    const isNotExpanded = !overNode.expanded || (overNode.allChildrenCount ?? 0) === 0;
+    if (position === 'below-parent' && isLastChildOfParent && isNotExpanded && parent && parent.level >= 0) {
+      targetId = parent.data.id;
+    }
 
     const newData = MovementEngine.moveTasks(rowData, movingIds, targetId, position);
     setRowData(newData);
@@ -237,7 +266,7 @@ export default function App() {
 
     if (dropIndicator.position === 'above') {
       style = { ...style, top: top - 2, height: '4px', backgroundColor: '#3b82f6', boxShadow: '0 0 4px rgba(59, 130, 246, 0.5)' };
-    } else if (dropIndicator.position === 'below') {
+    } else if (dropIndicator.position === 'below' || dropIndicator.position === 'below-parent') {
       style = { ...style, top: top + height - 2, height: '4px', backgroundColor: '#3b82f6', boxShadow: '0 0 4px rgba(59, 130, 246, 0.5)' };
     } else {
       style = { 

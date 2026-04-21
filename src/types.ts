@@ -8,7 +8,7 @@ export interface Task {
   value?: string | number;
 }
 
-export type DropPosition = 'above' | 'below' | 'into';
+export type DropPosition = 'above' | 'below' | 'into' | 'below-parent';
 
 export interface DragTarget {
   id: string;
