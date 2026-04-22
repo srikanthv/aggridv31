@@ -14,3 +14,25 @@ export interface DragTarget {
   id: string;
   position: DropPosition;
 }
+
+export interface GridConfig {
+  enableSearch?: boolean;
+  enablePersistence?: boolean;
+  enableColumnState?: boolean;
+  enableExpandedState?: boolean;
+  enableUndoRedo?: boolean;
+  enableDragDrop?: boolean;
+  enableCRUD?: boolean;
+}
+
+export type SchemaFieldType = 'text' | 'number' | 'status' | 'date' | 'group';
+
+export interface ColumnSchema {
+  key: string;
+  label?: string;
+  type?: SchemaFieldType;
+  options?: string[]; // for status/select
+  editable?: boolean;
+  flex?: number;
+  hide?: boolean;
+}
