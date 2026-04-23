@@ -23,6 +23,17 @@ export interface GridConfig {
   enableUndoRedo?: boolean;
   enableDragDrop?: boolean;
   enableCRUD?: boolean;
+  enableFiltering?: boolean;
+  toolbar?: {
+    show?: boolean;
+    actions?: {
+      clearFilters?: boolean;
+      resetColumns?: boolean;
+      autosizeColumns?: boolean;
+      expandAll?: boolean;
+      collapseAll?: boolean;
+    };
+  };
 }
 
 export type SchemaFieldType = 'text' | 'number' | 'status' | 'date' | 'group';
@@ -35,4 +46,5 @@ export interface ColumnSchema {
   editable?: boolean;
   flex?: number;
   hide?: boolean;
+  filter?: boolean;
 }

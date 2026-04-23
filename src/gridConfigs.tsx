@@ -25,7 +25,14 @@ export const gridConfigs: Record<string, GridDefinition> = {
     gridId: "user-directory",
     configOverrides: { 
       enableDragDrop: false,
-      enableSearch: true 
+      enableSearch: true,
+      toolbar: {
+        show: true,
+        actions: {
+          expandAll: false,
+          collapseAll: false
+        }
+      }
     },
     schema: [
       { key: 'name', label: 'Member Name', type: 'text', editable: true, flex: 2 },
@@ -44,7 +51,7 @@ export const gridConfigs: Record<string, GridDefinition> = {
     },
     schema: [
       { key: 'name', label: 'Event Description', type: 'text', flex: 2 },
-      { key: 'value', label: 'Timestamp', type: 'date', flex: 1 },
+      { key: 'value', label: 'Timestamp', type: 'date', flex: 1, filter: false },
       { key: 'status', label: 'Level', type: 'status', flex: 1 },
       { key: 'order', hide: true }
     ]

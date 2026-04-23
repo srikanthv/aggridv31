@@ -42,7 +42,7 @@ export default function ConfigViewer({
   );
 
   return (
-    <div className="h-full flex flex-col bg-slate-950 text-slate-100 overflow-hidden border-l border-slate-800 shadow-2xl">
+    <div className="h-full flex flex-col bg-slate-950 text-slate-100 overflow-hidden border-l border-slate-800 shadow-2xl motion-theme">
       <header className="h-16 shrink-0 flex items-center justify-between px-6 border-b border-slate-800 bg-slate-900/50">
         <div className="flex items-center gap-3">
           <Terminal size={18} className="text-emerald-500" />
@@ -53,7 +53,7 @@ export default function ConfigViewer({
         </div>
         <button 
           onClick={copyToClipboard}
-          className="p-2 hover:bg-slate-800 rounded-md transition-colors text-slate-400 hover:text-emerald-400"
+          className="p-2 hover:bg-slate-800 rounded-md motion-hover text-slate-400 hover:text-emerald-400 active:scale-90"
           title="Copy full JSON"
         >
           {copied ? <Check size={16} className="text-emerald-500" /> : <Copy size={16} />}

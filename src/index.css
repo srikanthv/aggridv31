@@ -1,13 +1,14 @@
 @import "tailwindcss";
+@import "./motion.css";
 @import "ag-grid-community/styles/ag-grid.css";
 @import "ag-grid-community/styles/ag-theme-quartz.css";
 
 @theme {
   --color-brand-sidebar: #0f172a;
   --color-brand-accent: #3b82f6;
-  --color-brand-bg: #f8fafc;
-  --color-brand-border: #e2e8f0;
-  --color-brand-text: #1e293b;
+  --color-brand-bg: var(--bg-app);
+  --color-brand-border: var(--border-color);
+  --color-brand-text: var(--text-main);
   --color-brand-grid-bg: #f1f5f9;
 }
 
@@ -18,11 +19,24 @@
   --text-main: #1e293b;
   --accent: #3b82f6;
   --row-hover: #f1f5f9;
+  --header-bg: #ffffff;
+  --toolbar-bg: #f1f5f980;
   --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
   
   font-family: var(--font-sans);
   color: var(--text-main);
   background-color: var(--bg-app);
+}
+
+.dark {
+  --bg-app: #020617;
+  --sidebar-bg: #020617;
+  --border-color: #1e293b;
+  --text-main: #f1f5f9;
+  --accent: #3b82f6;
+  --row-hover: #1e293b;
+  --header-bg: #0f172a;
+  --toolbar-bg: #1e293b80;
 }
 
 html, body {
@@ -38,17 +52,49 @@ html, body {
   width: 100%;
 }
 
-/* Custom AG Grid overlaps to match Geometric Balance */
+/* Custom AG Grid overlaps */
 .ag-theme-quartz {
-  --ag-background-color: white;
-  --ag-header-background-color: #f8fafc;
-  --ag-border-color: #e2e8f0;
-  --ag-row-hover-color: #f1f5f9;
-  --ag-selected-row-background-color: #f1f5f9;
+  --ag-background-color: var(--header-bg);
+  --ag-header-background-color: var(--bg-app);
+  --ag-border-color: var(--border-color);
+  --ag-row-hover-color: var(--row-hover);
+  --ag-selected-row-background-color: var(--row-hover);
   --ag-font-family: 'Inter', sans-serif;
   --ag-font-size: 13px;
   --ag-header-foreground-color: #64748b;
-  --ag-header-cell-hover-background-color: #f1f5f9;
+  --ag-header-cell-hover-background-color: var(--row-hover);
+  --ag-foreground-color: var(--text-main);
+  
+  /* Apply smooth transitions to grid colors */
+  transition: var(--motion-theme);
+  transition-property: background-color, border-color, color;
+}
+
+.ag-theme-quartz .ag-row,
+.ag-theme-quartz .ag-cell,
+.ag-theme-quartz .ag-header,
+.ag-theme-quartz .ag-header-cell {
+  /* Fast hover feedback + Slow theme transition */
+  transition: background-color var(--motion-hover), 
+              border-color var(--motion-theme), 
+              color var(--motion-theme), 
+              opacity var(--motion-hover);
+}
+
+.dark .ag-theme-quartz {
+  --ag-background-color: #0f172a;
+  --ag-header-background-color: #020617;
+  --ag-border-color: #1e293b;
+  --ag-row-hover-color: #1e293b;
+  --ag-selected-row-background-color: #1e293b;
+  --ag-header-foreground-color: #94a3b8;
+  --ag-foreground-color: #f1f5f9;
+  --ag-header-cell-hover-background-color: #1e293b;
+}
+
+.ag-header-cell {
+  padding-left: 0 !important;
+  padding-right: 0 !important;
 }
 
 .ag-header-cell-label {
@@ -60,6 +106,30 @@ html, body {
 
 .ag-row {
   border-bottom: 1px solid #f1f5f9;
+}
+
+/* Utilities */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #e2e8f0;
+  border-radius: 10px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #cbd5e1;
 }
 
 /* 

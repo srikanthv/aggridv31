@@ -1,0 +1,37 @@
+/**
+ * Motion Design Token System
+ * Standardized timing and easing functions for consistent UI interactions.
+ */
+
+:root {
+  /* Durations */
+  --motion-instant: 0ms;
+  --motion-fast: 120ms;
+  --motion-normal: 200ms;
+  --motion-slow: 300ms;
+
+  /* Easing Curves (Modern Cubic-Bezier) */
+  --ease-standard: cubic-bezier(0.4, 0.0, 0.2, 1);
+  --ease-decelerate: cubic-bezier(0.0, 0.0, 0.2, 1);
+  --ease-accelerate: cubic-bezier(0.4, 0.0, 1, 1);
+  --ease-spring: cubic-bezier(0.175, 0.885, 0.32, 1.275);
+
+  /* Combined Interaction Tokens */
+  --motion-hover: var(--motion-fast) var(--ease-standard);
+  --motion-interactive: var(--motion-normal) var(--ease-standard);
+  --motion-theme: var(--motion-slow) var(--ease-standard);
+  --motion-bounce: var(--motion-normal) var(--ease-spring);
+}
+
+/* Base Transition Utilities */
+.motion-hover {
+  transition: all var(--motion-hover);
+}
+
+.motion-interactive {
+  transition: all var(--motion-interactive);
+}
+
+.motion-theme {
+  transition: background-color var(--motion-theme), color var(--motion-theme), border-color var(--motion-theme), fill var(--motion-theme), stroke var(--motion-theme);
+}

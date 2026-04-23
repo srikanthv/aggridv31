@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { AgGridReact } from 'ag-grid-react';
+import { motion, AnimatePresence } from 'motion/react';
 import { 
   ColDef, 
   GetDataPath, 
@@ -9,10 +10,14 @@ import {
   GridReadyEvent
 } from 'ag-grid-community';
 import 'ag-grid-enterprise';
-import { LayoutGrid, FolderClosed, FileText, Undo2, Redo2, ShieldAlert } from 'lucide-react';
+import { LayoutGrid, FolderClosed, FileText, Undo2, Redo2, ShieldAlert, Filter, FilterX, RotateCcw } from 'lucide-react';
+
+import { SPRING_PRESETS } from '../../lib/motionConfig';
 
 import { Task, DropPosition, GridConfig, ColumnSchema } from '../../types';
 import { MovementEngine } from '../../movementEngine';
+import GridToolbar from './GridToolbar';
+import CustomHeader from './CustomHeader';
 
 export const defaultGridConfig: Required<GridConfig> = {
   enableSearch: true,
@@ -22,6 +27,17 @@ export const defaultGridConfig: Required<GridConfig> = {
   enableUndoRedo: true,
   enableDragDrop: true,
   enableCRUD: true,
+  enableFiltering: true,
+  toolbar: {
+    show: true,
+    actions: {
+      clearFilters: true,
+      resetColumns: true,
+      autosizeColumns: true,
+      expandAll: true,
+      collapseAll: true,
+    }
+  }
 };
 
 interface ReusableGridProps {
@@ -41,7 +57,19 @@ export default function ReusableGrid({
   configOverrides = {},
   className = ""
 }: ReusableGridProps) {
-  const config = { ...defaultGridConfig, ...configOverrides };
+  // Deep-ish merge for toolbar to preserve defaults
+  const config = { 
+    ...defaultGridConfig, 
+    ...configOverrides,
+    toolbar: {
+      ...defaultGridConfig.toolbar,
+      ...(configOverrides.toolbar || {}),
+      actions: {
+        ...defaultGridConfig.toolbar?.actions,
+        ...(configOverrides.toolbar?.actions || {})
+      }
+    }
+  };
   
   // Namespaced Keys
   const STORAGE_KEY = `aggrid_${gridId}_rowdata`;
@@ -64,10 +92,13 @@ export default function ReusableGrid({
   const [rowData, setRowData] = useState<Task[]>(() => getInitialData());
   const [dropIndicator, setDropIndicator] = useState<{ targetId: string; position: DropPosition } | null>(null);
   const [isSortActive, setIsSortActive] = useState(false);
+  const [activeFilterCount, setActiveFilterCount] = useState(0);
   const [quickFilterText, setQuickFilterText] = useState('');
   const [history, setHistory] = useState<Task[][]>([]);
   const [future, setFuture] = useState<Task[][]>([]);
   
+  const [gridApi, setGridApi] = useState<GridApi | null>(null);
+  const [columnApi, setColumnApi] = useState<any | null>(null);
   const gridApiRef = useRef<GridApi | null>(null);
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const initialDataRef = useRef<Task[]>(structuredClone(initialRowData));
@@ -175,8 +206,42 @@ export default function ReusableGrid({
     saveExpandedState();
   }, [saveExpandedState]);
 
+  const updateActiveFilterCount = useCallback(() => {
+    if (!gridApiRef.current) return;
+    const model = gridApiRef.current.getFilterModel();
+    setActiveFilterCount(Object.keys(model || {}).length);
+  }, []);
+
+  const onFilterChanged = useCallback(() => {
+    updateActiveFilterCount();
+    saveGridState();
+  }, [saveGridState, updateActiveFilterCount]);
+
+  const handleClearFilters = useCallback(() => {
+    if (!gridApiRef.current) return;
+    gridApiRef.current.setFilterModel(null);
+    onFilterChanged();
+  }, [onFilterChanged]);
+
+  const handleResetColumns = useCallback(() => {
+    if (!gridApiRef.current) return;
+    gridApiRef.current.resetColumnState();
+    gridApiRef.current.sizeColumnsToFit();
+  }, []);
+
+  const handleAutosizeColumns = useCallback(() => {
+    if (!gridApiRef.current) return;
+    const allColumnIds: string[] = [];
+    gridApiRef.current.getColumns()?.forEach((column) => {
+      allColumnIds.push(column.getColId());
+    });
+    gridApiRef.current.autoSizeColumns(allColumnIds, false);
+  }, []);
+
   const onGridReady = (params: GridReadyEvent) => {
     gridApiRef.current = params.api;
+    setGridApi(params.api);
+    setColumnApi(params.api); // In v31+, api handles column tasks
     params.api.sizeColumnsToFit();
 
     if (config.enablePersistence) {
@@ -190,7 +255,10 @@ export default function ReusableGrid({
             const hasUserSort = columnState.some((s: any) => s.colId !== 'order' && s.sort != null);
             setIsSortActive(hasUserSort);
           }
-          if (filterModel) params.api.setFilterModel(filterModel);
+          if (filterModel) {
+            params.api.setFilterModel(filterModel);
+            updateActiveFilterCount();
+          }
         }
       } catch (e) { console.error("Restore grid state failed", e); }
 
@@ -270,22 +338,31 @@ export default function ReusableGrid({
 
   const handleReset = () => {
     if (!gridApiRef.current) return;
+    
+    // 1. Explicitly clear UI state
     gridApiRef.current.deselectAll();
     gridApiRef.current.collapseAll();
-    gridApiRef.current.applyColumnState({ defaultState: { sort: null } });
+    gridApiRef.current.resetColumnState();
     gridApiRef.current.setFilterModel(null);
     gridApiRef.current.setQuickFilter('');
+    gridApiRef.current.sizeColumnsToFit();
+    
+    // 2. Clear stateful variables
     setQuickFilterText('');
     setIsSortActive(false);
+    setActiveFilterCount(0);
     setHistory([]);
     setFuture([]);
     
+    // 3. Purge Persistence
     if (config.enablePersistence) {
       localStorage.removeItem(STORAGE_KEY);
       localStorage.removeItem(GRID_STATE_KEY);
       localStorage.removeItem(COLUMN_STATE_KEY);
       localStorage.removeItem(EXPANDED_KEY);
     }
+
+    // 4. Reset data to clone of initial mount data
     setRowData(structuredClone(initialDataRef.current));
   };
 
@@ -298,7 +375,9 @@ export default function ReusableGrid({
         editable: col.editable,
         flex: col.flex,
         hide: col.hide,
-        filter: col.type === 'number' ? 'agNumberColumnFilter' : 'agTextColumnFilter',
+        filter: (config.enableFiltering && col.filter !== false) 
+          ? (col.type === 'number' ? 'agNumberColumnFilter' : 'agTextColumnFilter')
+          : false,
       };
 
       if (col.type === 'group') {
@@ -359,7 +438,11 @@ export default function ReusableGrid({
   }), [mappedColumnDefs, isSortActive, config.enableDragDrop, schema]);
 
   const defaultColDef: ColDef = useMemo(() => ({
-    sortable: true, filter: true, resizable: true,
+    sortable: true, 
+    resizable: true,
+    floatingFilter: false,
+    menuTabs: ['filterMenuTab'],
+    headerComponent: CustomHeader,
     onCellValueChanged: (params) => {
       if (!params.data) return;
       const newData = MovementEngine.updateNode(rowData, params.data.id, { ...params.data });
@@ -389,64 +472,73 @@ export default function ReusableGrid({
   };
 
   return (
-    <div className={`flex flex-col h-full ${className}`}>
-      <header className="h-16 bg-white border-b border-brand-border flex items-center justify-between px-6 shrink-0">
+    <motion.div 
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={SPRING_PRESETS.slow}
+      className={`flex flex-col h-full ${className}`}
+    >
+      <header className="h-16 bg-[var(--header-bg)] border-b border-brand-border flex items-center justify-between px-6 shrink-0 motion-theme">
         <div className="flex flex-col">
           <h2 className="font-semibold text-lg leading-tight uppercase tracking-tight">Grid Engine: {gridId}</h2>
           <p className="text-[10px] text-slate-400 font-medium">MANAGED HIERARCHICAL DATA COMPONENT</p>
         </div>
         <div className="flex gap-2 items-center">
-          {config.enableSearch && (
-            <input 
-              type="text"
-              placeholder="Search assets..."
-              value={quickFilterText}
-              onChange={handleSearchChange}
-              className="px-3 py-2 text-xs border border-slate-200 rounded focus:outline-none focus:ring-2 focus:ring-brand-accent/50 w-48 transition-all"
-            />
-          )}
-          {config.enableUndoRedo && (
-            <>
-              <div className="w-px h-6 bg-slate-200 mx-1" />
-              <div className="flex gap-1 mr-2">
-                <button 
-                  onClick={handleUndo} disabled={history.length === 0}
-                  className="p-2 text-slate-600 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed rounded"
-                >
-                  <Undo2 size={16} />
-                </button>
-                <button 
-                  onClick={handleRedo} disabled={future.length === 0}
-                  className="p-2 text-slate-600 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed rounded"
-                >
-                  <Redo2 size={16} />
-                </button>
-              </div>
-            </>
-          )}
           {config.enableCRUD && (
             <>
               <div className="w-px h-6 bg-slate-200 mx-1" />
-              <button onClick={handleAddNode} className="px-4 py-2 text-xs font-bold bg-emerald-600 text-white rounded hover:bg-emerald-700 transition-colors shadow-sm">
+              <motion.button 
+                whileHover={{ y: -2 }}
+                whileTap={{ scale: 0.96 }}
+                transition={SPRING_PRESETS.fast}
+                onClick={handleAddNode} 
+                className="px-4 py-2 text-xs font-bold bg-emerald-600 text-white rounded hover:bg-emerald-700 transition-colors shadow-sm"
+              >
                 Add Node
-              </button>
-              <button onClick={handleDeleteNode} className="px-4 py-2 text-xs font-bold bg-slate-100 text-slate-700 border border-slate-200 rounded hover:bg-slate-200 transition-colors shadow-sm">
+              </motion.button>
+              <motion.button 
+                whileHover={{ y: -2 }}
+                whileTap={{ scale: 0.96 }}
+                transition={SPRING_PRESETS.fast}
+                onClick={handleDeleteNode} 
+                className="px-4 py-2 text-xs font-bold bg-slate-100 text-slate-700 border border-slate-200 rounded hover:bg-slate-200 transition-colors shadow-sm"
+              >
                 Delete
-              </button>
+              </motion.button>
             </>
           )}
           <div className="w-px h-6 bg-slate-200 mx-1" />
-          <button onClick={handleReset} className="px-4 py-2 text-xs font-semibold border border-red-200 text-red-600 rounded hover:bg-red-50 transition-colors shadow-sm">
-            Reset
-          </button>
-          <div className="w-px h-6 bg-slate-200 mx-1" />
-          <button onClick={() => gridApiRef.current?.expandAll()} className="px-3 py-2 text-[10px] font-bold border border-slate-200 rounded uppercase">Expand</button>
-          <button onClick={() => gridApiRef.current?.collapseAll()} className="px-3 py-2 text-[10px] font-bold border border-slate-200 rounded uppercase">Collapse</button>
+          <motion.button 
+            whileHover={{ y: -2 }}
+            whileTap={{ scale: 0.96 }}
+            transition={SPRING_PRESETS.fast}
+            onClick={handleReset} 
+            className="px-4 py-2 text-xs font-semibold border border-red-200 text-red-600 rounded hover:bg-red-50 transition-colors shadow-sm" 
+            title="Factory Reset (Clear all data/state)"
+          >
+            Reset All
+          </motion.button>
         </div>
       </header>
 
-      <div className="flex-1 bg-white overflow-hidden relative">
-        <div className="ag-theme-quartz w-full h-full relative">
+      <GridToolbar 
+        gridApi={gridApi}
+        columnApi={columnApi}
+        config={config}
+        activeFilterCount={activeFilterCount}
+        quickFilterText={quickFilterText}
+        onSearchChange={handleSearchChange}
+        canUndo={history.length > 0}
+        canRedo={future.length > 0}
+        onUndo={handleUndo}
+        onRedo={handleRedo}
+        onClearFilters={handleClearFilters}
+        onReset={handleResetColumns}
+        onAutosize={handleAutosizeColumns}
+      />
+
+      <div className="flex-1 bg-[var(--bg-app)] overflow-hidden relative motion-theme">
+        <div className="ag-theme-quartz w-full h-full relative motion-theme">
           <AgGridReact
             rowData={rowData}
             columnDefs={finalColumnDefs}
@@ -458,11 +550,20 @@ export default function ReusableGrid({
             getDataPath={(data) => data.path}
             onGridReady={onGridReady}
             onSortChanged={onSortChanged}
-            onFilterChanged={() => saveGridState()}
+            onFilterChanged={onFilterChanged}
             onColumnMoved={onColumnStateChanged}
             onColumnResized={onColumnStateChanged}
             onColumnVisible={onColumnStateChanged}
             onRowGroupOpened={onRowGroupOpened}
+            overlayNoRowsTemplate={`
+              <div className="flex flex-col items-center justify-center p-8 text-slate-400">
+                <div className="bg-slate-50 p-4 rounded-full mb-4">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                </div>
+                <h3 className="text-sm font-bold text-slate-600 mb-1">No matching results</h3>
+                <p className="text-[10px] text-slate-400 max-w-[200px] text-center">Try adjusting your filters or search terms to find what you're looking for.</p>
+              </div>
+            `}
             onRowDragMove={(e) => {
               const overNode = e.overNode;
               if (overNode) setDropIndicator({ targetId: overNode.data.id, position: getDropPosition(e) });
@@ -477,6 +578,6 @@ export default function ReusableGrid({
           <DropIndicatorComponent />
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 }

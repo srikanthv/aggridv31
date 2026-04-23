@@ -1,16 +1,31 @@
 import React from 'react';
-import { LayoutGrid, BarChart3, Users, ShieldAlert, Code2, PanelRightClose, PanelRightOpen } from 'lucide-react';
+import { LayoutGrid, BarChart3, Users, ShieldAlert, Code2, Moon, Sun } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import ReusableGrid, { defaultGridConfig } from './components/ReusableGrid/ReusableGrid';
 import ConfigViewer from './components/ConfigViewer/ConfigViewer';
 import { gridConfigs } from './gridConfigs';
 import { assetData, userData, auditData } from './sampleData';
+import { SPRING_PRESETS } from './lib/motionConfig';
 
 type PageType = 'assets' | 'users' | 'audit';
 
 export default function App() {
   const [activePage, setActivePage] = React.useState<PageType>('assets');
   const [showConfig, setShowConfig] = React.useState(false);
+  const [theme, setTheme] = React.useState<'light' | 'dark'>(() => {
+    return (localStorage.getItem('theme') as 'light' | 'dark') || 'light';
+  });
+
+  React.useEffect(() => {
+    localStorage.setItem('theme', theme);
+    if (theme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [theme]);
+
+  const toggleTheme = () => setTheme(prev => prev === 'light' ? 'dark' : 'light');
 
   const getActiveConfig = () => {
     switch (activePage) {
@@ -24,9 +39,9 @@ export default function App() {
   const activeConfig = getActiveConfig();
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-brand-bg text-brand-text">
+    <div className="flex h-screen w-screen overflow-hidden bg-brand-bg text-brand-text motion-theme">
       {/* Sidebar Navigation */}
-      <aside className="w-60 bg-brand-sidebar text-white flex flex-col shrink-0 font-sans z-20">
+      <aside className="w-60 bg-brand-sidebar text-white flex flex-col shrink-0 font-sans z-20 motion-theme">
         <div className="p-6 border-b border-slate-800 font-bold text-sm tracking-widest flex items-center gap-3">
           <div className="p-1 bg-brand-accent rounded">
             <ShieldAlert size={18} className="text-white" />
@@ -41,31 +56,42 @@ export default function App() {
             label="Dashboard" 
             onClick={() => setActivePage('audit')} 
             active={activePage === 'audit'} 
+            index={0}
           />
           <NavItem 
             icon={<BarChart3 size={16} />} 
             label="Hierarchy" 
             onClick={() => setActivePage('assets')} 
             active={activePage === 'assets'} 
+            index={1}
           />
           <NavItem 
             icon={<Users size={16} />} 
             label="Members" 
             onClick={() => setActivePage('users')} 
             active={activePage === 'users'} 
+            index={2}
           />
         </nav>
 
-        <div className="px-4 py-6">
+        <div className="px-4 py-2 flex flex-col gap-2">
           <button
             onClick={() => setShowConfig(!showConfig)}
             className={`
-              w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-xs font-bold transition-all
+              w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-xs font-bold motion-hover active:scale-95
               ${showConfig ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-white border border-slate-700/50'}
             `}
           >
             <Code2 size={14} />
             {showConfig ? 'Hide Config' : 'View Config'}
+          </button>
+          
+          <button
+            onClick={toggleTheme}
+            className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-xs font-bold bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-white border border-slate-700/50 motion-hover active:scale-95"
+          >
+            {theme === 'light' ? <Moon size={14} /> : <Sun size={14} />}
+            {theme === 'light' ? 'Dark Mode' : 'Light Mode'}
           </button>
         </div>
         
@@ -113,7 +139,7 @@ export default function App() {
           </AnimatePresence>
 
           {/* Unified App Footer */}
-          <footer className="h-8 bg-white border-t border-brand-border flex items-center justify-between px-4 text-[10px] text-slate-400 shrink-0 z-10">
+          <footer className="h-8 bg-brand-bg border-t border-brand-border flex items-center justify-between px-4 text-[10px] text-slate-400 shrink-0 z-10 motion-theme">
             <div className="flex gap-4">
               <div className="text-brand-accent font-bold uppercase tracking-widest">Enterprise Component System</div>
               <div className="bg-slate-50 border border-slate-100 px-2 rounded">Active Node: {activePage.toUpperCase()}</div>
@@ -129,7 +155,7 @@ export default function App() {
               initial={{ x: '100%' }}
               animate={{ x: 0 }}
               exit={{ x: '100%' }}
-              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              transition={SPRING_PRESETS.medium}
               className="w-96 shrink-0 h-full z-30"
             >
               <ConfigViewer 
@@ -146,16 +172,31 @@ export default function App() {
   );
 }
 
-function NavItem({ icon, label, onClick, active = false }: { icon: React.ReactNode; label: string; onClick: () => void; active?: boolean }) {
+function NavItem({ 
+  icon, 
+  label, 
+  onClick, 
+  active = false,
+  index = 0
+}: { 
+  icon: React.ReactNode; 
+  label: string; 
+  onClick: () => void; 
+  active?: boolean;
+  index?: number;
+}) {
   return (
-    <div 
+    <motion.div 
+      initial={{ x: -20, opacity: 0 }}
+      animate={{ x: 0, opacity: 1 }}
+      transition={{ ...SPRING_PRESETS.fast, delay: index * 0.05 }}
       onClick={onClick}
       className={`
-        px-6 py-3 flex items-center gap-3 text-sm cursor-pointer transition-all border-l-4
+        px-6 py-3 flex items-center gap-3 text-sm cursor-pointer motion-hover border-l-4 active:scale-98
         ${active ? 'bg-slate-800/50 text-white border-brand-accent' : 'text-white/60 border-transparent hover:text-white/90 hover:bg-slate-800/20'}
       `}>
       {icon}
       <span>{label}</span>
-    </div>
+    </motion.div>
   );
 }
